@@ -220,7 +220,7 @@
 ## 6. Файлы и артефакты
 
 - [clear_df.ipynb](Clear_df+EDA/clear_df.ipynb) — ноутбук с очисткой данных
-- [diagrams.ipynb](diagrams.ipynb) — ноутбук с визуализациями и анализом
-- [auto_EDA.ipynb](auto_EDA.ipynb) — автоматический EDA с использованием библиотек
-- [df_all_clear.csv](df_all_clear.csv) / [df_all_clear.xlsx](df_all_clear.xlsx) — очищенный датасет
-- [your_report.html](your_report.html) — автоматический отчет ydata_profiling
+- [diagrams.ipynb](Clear_df+EDA/diagrams.ipynb) — ноутбук с визуализациями и анализом
+- [auto_EDA.ipynb](Clear_df+EDA/auto_EDA.ipynb) — автоматический EDA с использованием библиотек
+- [df_all_clear.csv](Clear_df+EDA/df_all_clear.csv) / [df_all_clear.xlsx](Clear_df+EDA/df_all_clear.xlsx) — очищенный датасет
+- [your_report.html](Clear_df+EDA/your_report.html) — автоматический отчет ydata_profiling
