@@ -219,7 +219,7 @@
 
 ## 6. Файлы и артефакты
 
-- [clear_df.ipynb](clear_df.ipynb) — ноутбук с очисткой данных
+- [clear_df.ipynb](Clear_df+EDA/clear_df.ipynb) — ноутбук с очисткой данных
 - [diagrams.ipynb](diagrams.ipynb) — ноутбук с визуализациями и анализом
 - [auto_EDA.ipynb](auto_EDA.ipynb) — автоматический EDA с использованием библиотек
 - [df_all_clear.csv](df_all_clear.csv) / [df_all_clear.xlsx](df_all_clear.xlsx) — очищенный датасет
