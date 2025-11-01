@@ -6,8 +6,8 @@
 
 ---
 Этапы:
-| **1** | Создание Датасета [CREATE_DATASET.md](CREATE_DATASET.md).
-| **2** | Анализ данных, EDA, формирование гипотез [CLEAR_DF+EDA.md](CLEAR_DF+EDA.md).
+1. Создание Датасета [CREATE_DATASET.md](CREATE_DATASET.md).
+2. Анализ данных, EDA, формирование гипотез [CLEAR_DF+EDA.md](CLEAR_DF+EDA.md).
 ## Состав команды
 
 | Участник | Роль | Описание |
