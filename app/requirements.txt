@@ -3,3 +3,7 @@ uvicorn
 scikit-learn
 joblib
 numpy
+sqlalchemy
+pyjwt
+alembic
+python-multipart
