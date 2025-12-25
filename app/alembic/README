@@ -1,0 +1,19 @@
+Generic single-database configuration with SQLite.
+
+Commands:
+---------
+# Initialize database with latest migrations
+alembic upgrade head
+
+# Create new migration (after changing models)
+alembic revision --autogenerate -m "description"
+
+# Downgrade one version
+alembic downgrade -1
+
+# Show current revision
+alembic current
+
+# Show migration history
+alembic history
+

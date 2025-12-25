@@ -3,6 +3,14 @@
 Clear_df+EDA/auto_EDA.ipynb
 Clear_df+EDA/your_report.html
 
+# ML model (too large for GitHub, >100MB)
+app/model/model.pkl
+*.pkl
+
+# SQLite database
+*.db
+app/history.db
+
 # Python
 __pycache__/
 *.py[cod]
