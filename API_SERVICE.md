@@ -1,129 +1,136 @@
-# ML-сервис для предсказания цен на недвижимость
+# API сервис для предсказания цен недвижимости
 
-## Что это?
+## Описание
 
-REST API на FastAPI который принимает данные о квартире и возвращает предсказанную цену. Модель - RandomForest, обучена на данных о недвижимости.
+Это REST API сервис на FastAPI для предсказания стоимости квадратного метра недвижимости. В качестве ML модели используется Random Forest, обученный на собранном датасете новостроек.
 
----
+Сервис сохраняет историю запросов в SQLite базу данных и предоставляет статистику по времени обработки.
 
-## Структура
+## Структура проекта
 
 ```
 app/
-├── app.py              # основной файл, тут все эндпоинты
-├── schemas.py          # pydantic схемы для валидации
-├── database.py         # подключение к sqlite
-├── models.py           # sqlalchemy модель истории
-├── auth.py             # jwt авторизация
+├── app.py              # главный файл с эндпоинтами
+├── schemas.py          # pydantic схемы
+├── database.py         # подключение к БД
+├── models.py           # ORM модель для истории
+├── auth.py             # JWT авторизация
 ├── requirements.txt    # зависимости
-├── alembic.ini         # конфиг миграций
-├── alembic/            # папка с миграциями
+├── alembic.ini         # настройки миграций
+├── alembic/
 │   ├── env.py
-│   └── versions/
+│   └── versions/       # файлы миграций
 ├── ml/
-│   ├── model_loader.py # загрузка модели
-│   └── inference.py    # предсказание
+│   ├── model_loader.py # загрузка артефактов модели
+│   └── inference.py    # логика предсказания
 └── model/
-    └── model.pkl       # сама модель
+    └── model.pkl       # обученная модель + scaler + список фичей
 ```
 
----
-
-## Как запустить
+## Установка и запуск
 
 ```bash
-# 1. ставим зависимости
 cd app
+
+# установка зависимостей
 pip install -r requirements.txt
 
-# 2. накатываем миграции
+# применение миграций БД
 alembic upgrade head
 
-# 3. запускаем
+# запуск сервера
 python -m uvicorn app:app --reload --port 8000
 ```
 
-Документация: http://localhost:8000/docs
+После запуска доступна документация Swagger UI: http://localhost:8000/docs
 
----
+## API эндпоинты
 
-## Эндпоинты
+### POST /forward
 
-### POST /forward - предсказание
+Основной эндпоинт для получения предсказания. Принимает JSON с параметрами квартиры.
 
-Кидаем json с данными квартиры, получаем цену.
-
+Пример запроса:
 ```bash
 curl -X POST http://localhost:8000/forward \
   -H "Content-Type: application/json" \
-  -d '{"Цена": 5000000, "Площадь": 50, ...}'
+  -d '{
+    "Цена": 5000000,
+    "Город": "Москва",
+    "Площадь": 50,
+    "Этаж": 10,
+    "is_class_comfort": true,
+    ...
+  }'
 ```
 
-Ответ:
+Ответ (предсказанная цена за м²):
 ```json
-{"prediction": {"prediction": 5234567.89}}
+{
+  "prediction": {
+    "prediction": 116058.41
+  }
+}
 ```
 
-Ошибки:
-- 400 - кривой запрос
-- 403 - модель не смогла обработать
+Коды ответов:
+- 200 - успешное предсказание
+- 400 - неверный формат запроса (bad request)
+- 403 - модель не смогла обработать данные
 
----
+### GET /history
 
-### GET /history - история запросов
-
-Возвращает все предыдущие запросы из бд.
+Возвращает историю всех запросов к модели. Данные хранятся в SQLite.
 
 ```bash
 curl http://localhost:8000/history
 ```
 
-Можно добавить пагинацию: `?skip=0&limit=10`
+Поддерживается пагинация через параметры `skip` и `limit`:
+```bash
+curl "http://localhost:8000/history?skip=0&limit=20"
+```
 
----
+### DELETE /history
 
-### DELETE /history - очистка истории
-
-Нужен токен в заголовке.
+Удаляет всю историю запросов. Требуется токен подтверждения в заголовке.
 
 ```bash
 curl -X DELETE http://localhost:8000/history \
   -H "X-Delete-Token: delete-history-secret-token"
 ```
 
----
+### GET /stats
 
-### GET /stats - статистика
-
-Среднее время обработки, квантили, инфа по запросам.
+Возвращает статистику по запросам: среднее время обработки, квантили (50%, 95%, 99%), информация о входных данных.
 
 ```bash
 curl http://localhost:8000/stats
 ```
 
-Ответ:
+Пример ответа:
 ```json
 {
   "processing_time": {
-    "mean": 12.5,
-    "percentile_50": 10.2,
-    "percentile_95": 25.3,
-    "percentile_99": 45.1
+    "mean": 74.5,
+    "percentile_50": 65.2,
+    "percentile_95": 120.3,
+    "percentile_99": 150.1
   },
   "input_stats": {
-    "total_requests": 100,
-    "successful_requests": 95,
-    "failed_requests": 5,
-    ...
+    "total_requests": 50,
+    "successful_requests": 48,
+    "failed_requests": 2,
+    "avg_input_length": 1440.5,
+    "min_input_length": 1400,
+    "max_input_length": 1500
   }
 }
 ```
 
----
+### POST /login
 
-### POST /login - авторизация
-
-Получаем jwt токен.
+Авторизация для получения JWT токена.
 
 ```bash
 curl -X POST http://localhost:8000/login \
@@ -131,53 +138,62 @@ curl -X POST http://localhost:8000/login \
   -d '{"username": "admin", "password": "admin123"}'
 ```
 
----
+Ответ:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "token_type": "bearer"
+}
+```
 
 ### Админские эндпоинты
 
-`GET /admin/history` и `DELETE /admin/history` - то же самое что обычные, но нужен jwt токен админа в заголовке Authorization.
+Для доступа к `/admin/history` (GET и DELETE) нужен JWT токен в заголовке Authorization:
 
 ```bash
 curl http://localhost:8000/admin/history \
-  -H "Authorization: Bearer <токен>"
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
 ```
 
----
+## Тестовые данные для проверки
 
-## Тестовые данные
+| Параметр | Значение |
+|----------|----------|
+| Логин | admin |
+| Пароль | admin123 |
+| Токен для удаления истории | delete-history-secret-token |
 
-| что | значение |
-|-----|----------|
-| логин | admin |
-| пароль | admin123 |
-| токен удаления | delete-history-secret-token |
-
----
-
-## Alembic (миграции)
+## Работа с миграциями (Alembic)
 
 ```bash
-# применить миграции
+# применить все миграции
 alembic upgrade head
 
-# откатить
+# откатить последнюю миграцию
 alembic downgrade -1
 
-# текущая версия
+# посмотреть текущую версию
 alembic current
 
-# создать новую миграцию (после изменения models.py)
-alembic revision --autogenerate -m "описание"
+# создать новую миграцию после изменения models.py
+alembic revision --autogenerate -m "описание изменений"
 ```
 
----
+## Используемые технологии
 
-## Стек
+- **FastAPI** - веб-фреймворк для создания API
+- **Pydantic** - валидация входных данных
+- **SQLAlchemy** - ORM для работы с БД
+- **SQLite** - база данных для хранения истории
+- **Alembic** - миграции базы данных
+- **PyJWT** - генерация и проверка JWT токенов
+- **scikit-learn** - машинное обучение (Random Forest)
+- **pandas** - обработка данных при инференсе
+- **numpy** - работа с массивами
 
-- FastAPI - веб фреймворк
-- Pydantic - валидация
-- SQLAlchemy + SQLite - бд
-- Alembic - миграции
-- PyJWT - токены
-- scikit-learn - модель
-- numpy - массивы
+## Особенности реализации
+
+1. Модель предсказывает логарифм цены за м², который затем преобразуется обратно через `np.expm1()`
+2. При инференсе применяется тот же пайплайн что и при обучении: логарифмирование расстояний, one-hot encoding городов, масштабирование через StandardScaler
+3. Все артефакты (модель, scaler, список признаков) хранятся в одном файле model.pkl
+4. История запросов автоматически сохраняется в БД с временем обработки и статусом

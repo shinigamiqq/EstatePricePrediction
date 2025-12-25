@@ -1,5 +1,5 @@
 import jwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import Header, HTTPException, Depends
 from typing import Optional
 
@@ -19,18 +19,18 @@ USERS_DB = {
     }
 }
 
-# отдельный токен для удаления истории (по заданию)
+# отдельный токен для удаления истории 
 DELETE_HISTORY_TOKEN = "delete-history-secret-token"
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """создает jwt токен с заданным временем жизни"""
+    #создает jwt токен с заданным временем жизни
     to_encode = data.copy()
     
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now(timezone.utc) + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -39,7 +39,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
 
 
 def verify_token(token: str) -> dict:
-    """проверяет токен и возвращает payload"""
+    #проверяет токен и возвращает payload
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
@@ -50,7 +50,7 @@ def verify_token(token: str) -> dict:
 
 
 def authenticate_user(username: str, password: str) -> Optional[dict]:
-    """проверяет логин/пароль"""
+    # проверяет логин/пароль
     user = USERS_DB.get(username)
     
     if user and user["password"] == password:
@@ -60,7 +60,7 @@ def authenticate_user(username: str, password: str) -> Optional[dict]:
 
 
 def get_current_user(authorization: Optional[str] = Header(default=None)) -> dict:
-    """достает юзера из jwt токена в заголовке Authorization"""
+    # достает юзера из jwt токена в заголовке Authorization
     if not authorization:
         raise HTTPException(status_code=401, detail="Authorization header required")
     
@@ -85,7 +85,7 @@ def get_current_user(authorization: Optional[str] = Header(default=None)) -> dic
 
 
 def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
-    """проверяет что юзер админ"""
+    # проверяет что юзер админ
     if current_user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
     
@@ -93,7 +93,7 @@ def require_admin(current_user: dict = Depends(get_current_user)) -> dict:
 
 
 def verify_delete_token(x_delete_token: Optional[str] = Header(default=None)) -> bool:
-    """проверяет токен для удаления истории (X-Delete-Token в заголовке)"""
+    # проверяет токен для удаления истории 
     if not x_delete_token:
         raise HTTPException(status_code=401, detail="X-Delete-Token header required")
     

@@ -1,96 +1,68 @@
 import numpy as np
+import pandas as pd
 
 
-FEATURE_ORDER = [
-    "Цена",
-    "is_class_eco",
-    "is_class_comfort",
-    "is_class_business",
-    "is_class_elite",
-
-    "is_brick",
-    "is_monolith",
-    "is_panel",
-    "is_new_build",
-
-    "has_finish_turnkey",
-    "has_finish_whitebox",
-    "has_finish_rough",
-
-    "has_playground",
-    "has_parking_underground",
-    "has_parking_surface",
-    "has_parking_any",
-    "has_kindergarten",
-    "has_school",
-    "is_closed_yard",
-    "has_shops_nearby",
-    "has_fitness_nearby",
-
-    "near_metro",
-    "near_park",
-    "near_water",
-
-    "has_concierge",
-    "has_storage_room",
-    "has_panoramic_windows",
-    "has_balcony",
-    "has_loggia",
-    "has_terrace",
-
-    "has_mortgage",
-    "is_assignment",
-    "has_discount",
-
-    "dist_to_city_center",
-    "dist_to_school",
-    "dist_to_kindergarten",
-    "dist_to_park",
-    "dist_to_bus_stop",
-    "dist_to_supermarket",
-
-    "Индекс_города",
-    "Курортный",
-    "Средняя_зп_в_городе_тыс_руб_2025",
-    "Население_2015",
-    "Динамика_населения_за_10_лет",
-
-    "Площадь",
-    "Этаж",
-    "Этажность_дома",
-    "Цена_за_квадратный_метр",
-    "Rooms_Count",
-
-    "Property_Type_Квартира",
-    "Property_Type_Своб_планировка",
-    "Property_Type_Студия"
-]
-
-
-def run_model(model, data: dict):
+def run_model(artifacts: dict, data: dict):
+    
     try:
-        row = []
-
-        for feature in FEATURE_ORDER:
-            value = data.get(feature)
-
-            if isinstance(value, bool):
-                value = int(value)
-
-            if value is None:
-                value = 0
-
-            row.append(value)
-
-        X = np.array([row], dtype=float)
-
-        prediction = model.predict(X)
-        print(prediction)
-
+        model = artifacts['model']
+        scaler = artifacts['scaler']
+        feature_names = artifacts['feature_names']
+        dist_cols = artifacts['dist_cols']
+        
+        # DataFrame 
+        df = pd.DataFrame([data])
+        
+        # Логарифмируем расстояния 
+        for col in dist_cols:
+            if col in df.columns:
+                df[f'{col}_log'] = np.log1p(df[col].fillna(0))
+            else:
+                df[f'{col}_log'] = 0.0
+        
+        # Удаляем колонки, которые не нужны для предсказания
+        cols_to_drop = ['Площадь', 'Дата_публикации', 'Дата публикации',
+                        'Цена', 'Цена_log', 'Цена_за_квадратный_метр', 
+                        'Цена_за_квадратный_метр_log'] + dist_cols
+        
+        for col in cols_to_drop:
+            if col in df.columns:
+                df = df.drop(columns=[col])
+        
+        # One-hot encoding 
+        if 'Город' in df.columns:
+            df = pd.get_dummies(df, columns=['Город'], drop_first=True)
+        if 'Субъект_РФ' in df.columns:
+            df = pd.get_dummies(df, columns=['Субъект_РФ'], drop_first=True)
+        if 'Субъект РФ' in df.columns:
+            df = pd.get_dummies(df, columns=['Субъект РФ'], drop_first=True)
+        
+        # Приведём к тем же признакам, что и при обучении
+        missing_cols = {col: 0 for col in feature_names if col not in df.columns}
+        if missing_cols:
+            missing_df = pd.DataFrame([missing_cols])
+            df = pd.concat([df, missing_df], axis=1)
+        
+        # только нужные колонки 
+        df = df[feature_names]
+        
+        # Масштабирование через обученный scaler
+        X_scaled = scaler.transform(df.values)
+        
+        # Предсказание 
+        prediction_log = model.predict(X_scaled)
+        
+        # Обратное преобразование из логарифма
+        prediction_real = float(np.expm1(prediction_log[0]))
+        
+        print(f"Prediction (log): {prediction_log[0]:.4f}, Real: {prediction_real:.2f} rub/m2")
+        
         return {
-            "prediction": float(prediction[0])
+            "prediction": prediction_real
         }
-
+        
     except Exception as e:
         print(f"Inference error: {e}")
+        import traceback
+        traceback.print_exc()
         return None
